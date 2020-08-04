@@ -142,7 +142,7 @@ class DatabaseInterface:
         print(f"{date_time_1} - {date_time_2}")
         query = Person.select().where(Person.date_of_birth > date_time_1, Person.date_of_birth < date_time_2)
         for result in query:
-            print(f"{result.login.username}, {result.date_of_birth}")
+            print(f"{result.login.username}")
 
     def safest_password(self):
         """
@@ -295,12 +295,13 @@ db_interface = DatabaseInterface()
 persons_db.connect()
 
 # Creating tables if they don't exist
-if not persons_db.table_exists(Table('Person')):
-    persons_db.create_tables(Person)
-if not persons_db.table_exists(Table('Location')):
-    persons_db.create_tables(Location)
-if not persons_db.table_exists(Table('Login')):
-    persons_db.create_tables(Login)
+if not persons_db.table_exists('Location'):
+    persons_db.create_tables([Location])
+if not persons_db.table_exists('Login'):
+    persons_db.create_tables([Login])
+if not persons_db.table_exists('Person'):
+    persons_db.create_tables([Person])
+
 
 
 # Argparse CLI
