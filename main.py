@@ -18,6 +18,8 @@ class Login(Model):
     sha1 = CharField()
     sha256 = CharField()
 
+    password_safety = IntegerField()
+
     class Meta:
         database = persons_db
 
@@ -83,11 +85,20 @@ class Person(Model):
 
 
 def gender_percentage():
-    # Tweet.select().where(Tweet.id > 50).count()
     female_count = Person.select().where(Person.gender == ['female']).count()
     male_count = Person.select().where(Person.gender == ['male']).count()
     all_count = Person.select().count()
     return 100.0*female_count/all_count, 100.0*male_count/all_count
+
+
+def calculate_average(gender):
+    if gender != 'male' and gender != 'female':
+        query = Person.select(fn.AVG(Person.age).alias('Average_age'))
+    else:
+        query = Person.select(fn.AVG(Person.age).alias('Average_age')).where(Person.gender == gender)
+
+    for result in query:
+        print(result.Average_age)
 
 
 def most_popular_cities(n):
@@ -111,6 +122,26 @@ def date_range(date_1, date_2):
     for result in query:
         print(result.login.username)
 
+
+def safest_password():
+    query = Login.select(Login).order_by(Login.password_safety.desc()).limit(1)
+    for result in query:
+        print(result.password, result.password_safety)
+
+
+def calc_pass_safety(password):
+    password_safety = 0
+    if any(c.islower() for c in password):
+        password_safety += 1
+    if any(c.isupper() for c in password):
+        password_safety += 2
+    if any(c.isdigit() for c in password):
+        password_safety += 2
+    if any(not c.isalnum() for c in password):
+        password_safety += 3
+    if len(password) >= 8:
+        password_safety += 5
+    return password_safety
 
 
 persons_db.connect()
@@ -138,7 +169,7 @@ with open('persons.json', encoding='utf-8') as f:
                 try:
                     birthday_date_time_temp = birthday_date_time_temp.replace(year=current_datetime.year)
                 except ValueError:
-                    # In case od leap year
+                    # In case of the leap year
                     birthday_date_time_temp = birthday_date_time_temp.replace(year=current_datetime.year,
                                                                               day=birthday_date_time_temp.day+1)
                 days_to_birthday = (birthday_date_time_temp.date() - current_datetime.date()).days
@@ -146,7 +177,7 @@ with open('persons.json', encoding='utf-8') as f:
                     try:
                         birthday_date_time_temp = birthday_date_time_temp.replace(year=current_datetime.year + 1)
                     except ValueError:
-                        # In case od leap year
+                        # In case of the leap year
                         birthday_date_time_temp = birthday_date_time_temp + timedelta(days=1)
                         birthday_date_time_temp = birthday_date_time_temp.replace(year=current_datetime.year + 1)
 
@@ -154,10 +185,8 @@ with open('persons.json', encoding='utf-8') as f:
 
                 person['day_to_birthday'] = days_to_birthday
 
-
                 # Checking if person already exists (by username)
                 query = Login.select().where(Login.username == person['login']['username'])
-
 
                 for key_1, value_1 in person.items():
                     print(key_1, value_1)#DEL
@@ -165,10 +194,12 @@ with open('persons.json', encoding='utf-8') as f:
                 if not query.exists():
 
                     # Adding person, login and location to database
+
+                    pass_safety = calc_pass_safety(person['login']['password'])
                     login_temp_db = Login(uuid=person['login']['uuid'], username=person['login']['username'],
                                            password=person['login']['password'], salt=person['login']['salt'],
                                            md5=person['login']['md5'], sha1=person['login']['sha1'],
-                                           sha256=person['login']['sha256'])
+                                           sha256=person['login']['sha256'], password_safety=pass_safety)
                     login_temp_db.save()
 
                     loc_temp_db = Location(street_number=person['location']['street']['number'],
@@ -194,6 +225,7 @@ with open('persons.json', encoding='utf-8') as f:
 
 female_percentage, male_percentage = gender_percentage()
 
+
 print("\nCititees: ")#DEL
 most_popular_cities(5)
 print("\nPAsswords: ")#DEL
@@ -202,6 +234,12 @@ most_popular_passwords(7)
 
 print("\nDAte range: ")#DEL
 date_range('1997-01-30', '1998-02-04')
+
+print("\nAverage age:")
+calculate_average('male')
+
+print("\nSafest password: ")
+safest_password()
 
 persons_db.close()
 
